@@ -1,0 +1,155 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f4f4;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: #fff;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+h1, h2 {
+    text-align: center;
+    color: #0056b3;
+    margin-bottom: 20px;
+}
+
+.controls {
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: center; /* Pusatkan kontrol */
+}
+
+.controls label {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.controls select, 
+.controls input[type="text"],
+.controls input[type="number"] {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* Penyesuaian lebar untuk elemen kontrol */
+#schoolFilter { 
+    width: 280px; /* Lebih lebar untuk nama sekolah */
+}
+#optionTypeFilter {
+    width: 180px; 
+}
+.controls input[type="text"] {
+    flex-grow: 1; 
+    min-width: 180px; 
+}
+.controls input[type="number"] {
+    width: 120px; 
+}
+
+
+.controls button {
+    padding: 8px 15px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.controls button:hover {
+    background-color: #0056b3;
+}
+
+.summary-section {
+    margin-top: 30px;
+    margin-bottom: 30px;
+    padding: 15px;
+    background-color: #e9f5ff;
+    border-radius: 8px;
+    border: 1px solid #cce5ff;
+}
+
+#schoolSummaryLoading, #noSummaryData {
+    text-align: center;
+    font-style: italic;
+    color: #666;
+    padding: 10px 0;
+}
+
+.table-container {
+    overflow-x: auto; /* Untuk tabel yang responsif */
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+table th, table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+    white-space: nowrap; /* Mencegah teks terpotong */
+}
+
+table th {
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+table tbody tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+table tbody tr:hover {
+    background-color: #eaeaea;
+}
+
+#loadingMessage, #noDataMessage {
+    text-align: center;
+    margin-top: 20px;
+    font-style: italic;
+    color: #666;
+}
+
+/* Gaya untuk highlight nama */
+.highlight {
+    background-color: yellow; /* Warna highlight */
+    font-weight: bold;
+}
+
+/* Gaya baru untuk footer */
+.footer {
+    text-align: center;
+    margin-top: 40px;
+    padding: 20px;
+    background-color: #333;
+    color: #eee;
+    font-size: 0.9em;
+    border-radius: 0 0 8px 8px; /* Sudut melengkung di bagian bawah */
+}
+
+.footer a {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.footer a:hover {
+    text-decoration: underline;
+    color: #66b3ff;
+}
