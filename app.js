@@ -20,6 +20,14 @@ const OPTION_TYPES = {
     'MUTASI': 'perpindahan'
 };
 
+// --- Middleware dan Konfigurasi Express ---
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Set engine view untuk HTML
+app.set('views', path.join(__dirname, 'views'));
+app.engine('html', require('ejs').renderFile);
+app.set('view engine', 'html'); // <--- PASTIKAN BARIS INI ADA DAN DI SINI!
+
 // --- Fungsi untuk Mengambil Daftar Cabang Dinas (Cadisdik ID dan Nama Tampilan) ---
 async function fetchCadisdikMapping() { 
     const cacheKey = 'jabar_cadisdik_mapping';
@@ -38,7 +46,7 @@ async function fetchCadisdikMapping() {
             cadisdikList.forEach(item => {
                 const cadisdikId = item.cadisdik;
                 const citiesText = item.city.join(', '); 
-                const displayName = citiesText; // HANYA WILAYAHNYA SAJA 
+                const displayName = citiesText; 
                 cadisdikMapping[cadisdikId] = displayName;
             });
             
@@ -69,7 +77,7 @@ async function fetchCadisdikMapping() {
 
 
 // --- Fungsi untuk Mengambil Daftar Sekolah berdasarkan Cadisdik ID ---
-async function fetchSchoolsByCadisdik(cadisdikId, limit = 100) { // Default limit 100
+async function fetchSchoolsByCadisdik(cadisdikId, limit = 100) { 
     if (!cadisdikId) { 
         return {};
     }
