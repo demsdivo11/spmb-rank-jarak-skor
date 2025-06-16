@@ -44,8 +44,11 @@ h1, h2 {
 }
 
 /* Penyesuaian lebar untuk elemen kontrol */
+#cadisdikFilter { 
+    width: 280px; 
+}
 #schoolFilter { 
-    width: 280px; /* Lebih lebar untuk nama sekolah */
+    width: 280px; 
 }
 #optionTypeFilter {
     width: 180px; 
@@ -82,19 +85,36 @@ h1, h2 {
     border: 1px solid #cce5ff;
 }
 
-#schoolSummaryLoading, #noSummaryData {
+.loading-small { 
     text-align: center;
     font-style: italic;
     color: #666;
     padding: 10px 0;
 }
 
-.table-container {
-    overflow-x: auto; /* Untuk tabel yang responsif */
+.info-message { 
+    text-align: center;
+    margin-top: 20px;
+    font-style: italic;
+    color: #666;
+}
+
+/* Untuk kedua tabel responsif */
+.table-responsive { /* Ini sudah diterapkan pada tabel rekapitulasi */
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch; 
+}
+
+.table-container { /* PERUBAHAN DI SINI */
+    overflow-x: auto; /* Memastikan ini ada */
+    -webkit-overflow-scrolling: touch; /* Untuk smooth scrolling di iOS */
+    width: 100%; /* Memastikan kontainer mengambil 100% lebar yang tersedia */
+    display: block; /* Memastikan itu berperilaku sebagai blok */
 }
 
 table {
-    width: 100%;
+    width: 100%; /* Agar tabel mencoba mengisi lebar kontainer */
+    min-width: max-content; /* BARU: Agar tabel tidak menyusut terlalu kecil di dalam scroll */
     border-collapse: collapse;
     margin-top: 20px;
 }
@@ -103,7 +123,7 @@ table th, table td {
     border: 1px solid #ddd;
     padding: 10px;
     text-align: left;
-    white-space: nowrap; /* Mencegah teks terpotong */
+    white-space: nowrap; /* Mencegah teks pilihan sekolah terpotong */
 }
 
 table th {
@@ -119,16 +139,10 @@ table tbody tr:hover {
     background-color: #eaeaea;
 }
 
-#loadingMessage, #noDataMessage {
-    text-align: center;
-    margin-top: 20px;
-    font-style: italic;
-    color: #666;
-}
 
 /* Gaya untuk highlight nama */
 .highlight {
-    background-color: yellow; /* Warna highlight */
+    background-color: yellow; 
     font-weight: bold;
 }
 
@@ -140,7 +154,7 @@ table tbody tr:hover {
     background-color: #333;
     color: #eee;
     font-size: 0.9em;
-    border-radius: 0 0 8px 8px; /* Sudut melengkung di bagian bawah */
+    border-radius: 0 0 8px 8px; 
 }
 
 .footer a {

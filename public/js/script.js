@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
+    const cadisdikFilter = document.getElementById('cadisdikFilter'); // PERUBAHAN ID
     const schoolFilter = document.getElementById('schoolFilter');
     const optionTypeFilter = document.getElementById('optionTypeFilter');
     const searchInput = document.getElementById('searchInput');
@@ -10,13 +11,57 @@ document.addEventListener('DOMContentLoaded', function() {
     const loadingMessage = document.getElementById('loadingMessage');
     const noDataMessage = document.getElementById('noDataMessage');
 
-    // Elemen baru untuk rekapitulasi asal sekolah
     const schoolSummaryTableBody = document.querySelector('#schoolSummaryTable tbody');
     const schoolSummaryLoading = document.getElementById('schoolSummaryLoading');
     const noSummaryData = document.getElementById('noSummaryData');
 
+    // --- Fungsi untuk mengisi dropdown sekolah ---
+    async function populateSchoolFilter(cadisdikId) { // Menerima cadisdikId
+        schoolFilter.innerHTML = '<option value="" disabled selected>Memuat sekolah...</option>';
+        schoolFilter.disabled = true;
 
-    // Fungsi untuk menghitung rekapitulasi asal sekolah
+        if (!cadisdikId) { // Jika tidak ada Cadisdik dipilih
+            schoolFilter.innerHTML = '<option value="" disabled selected>Pilih Cabang Dinas/Wilayah dahulu</option>';
+            return;
+        }
+
+        try {
+            // Panggil API schools dengan parameter cadisdik_id
+            const response = await fetch(`/api/schools?cadisdik_id=${encodeURIComponent(cadisdikId)}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const schools = await response.json(); 
+
+            schoolFilter.innerHTML = ''; 
+            schoolFilter.disabled = false;
+
+            const defaultOption = document.createElement('option');
+            defaultOption.value = "";
+            defaultOption.textContent = "Silakan pilih sekolah tujuan";
+            defaultOption.disabled = true;
+            defaultOption.selected = true;
+            schoolFilter.appendChild(defaultOption);
+
+            if (Object.keys(schools).length === 0) {
+                schoolFilter.innerHTML += '<option value="" disabled>Tidak ada sekolah ditemukan</option>'; 
+            } else {
+                for (const npsn in schools) {
+                    const option = document.createElement('option');
+                    option.value = npsn;
+                    option.textContent = `${schools[npsn]} (${npsn})`;
+                    schoolFilter.appendChild(option);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching schools:', error);
+            schoolFilter.innerHTML = '<option value="" disabled selected>Gagal memuat sekolah</option>';
+            schoolFilter.disabled = false;
+        }
+    }
+
+
+    // Fungsi untuk menghitung rekapitulasi asal sekolah (Tidak Berubah)
     function generateSchoolSummary(data) {
         const schoolCounts = {};
         let totalPendaftar = 0;
@@ -27,12 +72,12 @@ document.addEventListener('DOMContentLoaded', function() {
             totalPendaftar++;
         });
 
-        // Urutkan berdasarkan jumlah pendaftar (tertinggi duluan)
         const sortedSchools = Object.entries(schoolCounts).sort(([, countA], [, countB]) => countB - countA);
 
-        schoolSummaryTableBody.innerHTML = ''; // Bersihkan tabel rekapitulasi
+        schoolSummaryTableBody.innerHTML = ''; 
         if (sortedSchools.length === 0) {
             noSummaryData.style.display = 'block';
+            noSummaryData.textContent = 'Tidak ada data rekapitulasi asal sekolah.';
         } else {
             noSummaryData.style.display = 'none';
             sortedSchools.forEach(([school, count]) => {
@@ -48,13 +93,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     async function fetchData(npsn, optionType, searchQuery = '', minDistance = '', maxDistance = '') {
-        loadingMessage.style.display = 'block';
+        loadingMessage.style.display = 'none';
         noDataMessage.style.display = 'none';
-        dataTableBody.innerHTML = ''; 
-
-        schoolSummaryLoading.style.display = 'block'; // Tampilkan loading rekapitulasi
-        schoolSummaryTableBody.innerHTML = ''; // Bersihkan rekapitulasi lama
+        schoolSummaryLoading.style.display = 'none';
         noSummaryData.style.display = 'none';
+
+        dataTableBody.innerHTML = ''; 
+        schoolSummaryTableBody.innerHTML = ''; 
+
+        // Menggunakan cadisdikFilter.value untuk validasi
+        if (!cadisdikFilter.value || !npsn || !optionType) {
+            loadingMessage.textContent = 'Silakan pilih Cabang Dinas/Wilayah, Sekolah Tujuan, dan Jenis Pendaftaran.';
+            loadingMessage.style.display = 'block';
+            noDataMessage.style.display = 'block'; 
+            noSummaryData.style.display = 'block'; 
+            return;
+        }
+
+        loadingMessage.textContent = 'Memuat data pendaftar... Mohon tunggu sebentar.';
+        loadingMessage.style.display = 'block';
+        schoolSummaryLoading.textContent = 'Memuat rekapitulasi...';
+        schoolSummaryLoading.style.display = 'block';
 
         try {
             const params = new URLSearchParams();
@@ -71,14 +130,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const data = await response.json();
 
             loadingMessage.style.display = 'none';
-            schoolSummaryLoading.style.display = 'none'; // Sembunyikan loading rekapitulasi
+            schoolSummaryLoading.style.display = 'none'; 
 
             if (data.length === 0) {
                 noDataMessage.style.display = 'block';
-                noSummaryData.style.display = 'block'; // Tampilkan juga pesan no data untuk rekapitulasi
+                noDataMessage.textContent = 'Tidak ada data pendaftar ditemukan untuk kriteria ini.';
+                noSummaryData.style.display = 'block';
+                noSummaryData.textContent = 'Tidak ada data rekapitulasi asal sekolah.';
             } else {
                 noDataMessage.style.display = 'none';
-                generateSchoolSummary(data); // Panggil fungsi rekapitulasi
+                generateSchoolSummary(data); 
 
                 data.forEach(item => {
                     const row = dataTableBody.insertRow();
@@ -86,7 +147,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     row.insertCell().textContent = item.score !== null ? item.score.toFixed(3) : 'N/A';
                     row.insertCell().textContent = item.registration_number; 
                     
-                    // Menampilkan Nama dengan highlight jika ada pencarian
                     const nameCell = row.insertCell();
                     if (searchQuery && item.name.toLowerCase().includes(searchQuery)) {
                         const regex = new RegExp(`(${searchQuery})`, 'gi');
@@ -117,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Fungsi bantu untuk memuat ulang data dengan parameter saat ini
     function reloadData() {
-        const selectedNPSN = schoolFilter.value;
+        const selectedNPSN = schoolFilter.value; 
         const selectedOptionType = optionTypeFilter.value;
         const searchQuery = searchInput.value;
         const minDistance = minDistanceInput.value;
@@ -127,23 +187,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
     applyFiltersButton.addEventListener('click', reloadData);
 
+    // --- Mengatur ulang semua filter dan memuat ulang pesan instruksi ---
     clearFiltersButton.addEventListener('click', () => {
-        schoolFilter.value = schoolFilter.options[0].value; 
-        optionTypeFilter.value = 'DOMISILI'; 
+        cadisdikFilter.value = ""; // Reset ke opsi "Pilih Cadisdik"
+        schoolFilter.innerHTML = '<option value="" disabled selected>Silakan pilih Cabang Dinas/Wilayah dahulu</option>'; 
+        schoolFilter.disabled = true;
+        optionTypeFilter.value = "DOMISILI"; // DEFAULT DOMISILI
         searchInput.value = '';
         minDistanceInput.value = '';
         maxDistanceInput.value = '';
         reloadData(); 
     });
 
+    // Event listener untuk perubahan dropdown Cadisdik
+    cadisdikFilter.addEventListener('change', () => {
+        const selectedCadisdikId = cadisdikFilter.value;
+        populateSchoolFilter(selectedCadisdikId).then(() => { 
+            optionTypeFilter.value = "DOMISILI"; // DEFAULT DOMISILI
+            searchInput.value = ''; 
+            minDistanceInput.value = '';
+            maxDistanceInput.value = '';
+            reloadData(); 
+        });
+    });
+
+    // Event listener untuk perubahan dropdown Sekolah
     schoolFilter.addEventListener('change', () => {
-        optionTypeFilter.value = 'DOMISILI'; 
+        optionTypeFilter.value = "DOMISILI"; // DEFAULT DOMISILI
         searchInput.value = '';
         minDistanceInput.value = '';
         maxDistanceInput.value = '';
         reloadData();
     });
 
+    // Event listener untuk perubahan dropdown Jenis Pendaftaran
     optionTypeFilter.addEventListener('change', () => {
         searchInput.value = '';
         minDistanceInput.value = '';
@@ -151,9 +228,8 @@ document.addEventListener('DOMContentLoaded', function() {
         reloadData();
     });
 
-    // Perhatikan event 'input' untuk searchInput agar highlight otomatis
     searchInput.addEventListener('input', reloadData);
 
-
+    // Initial load: Hanya tampilkan pesan instruksi
     reloadData(); 
 });

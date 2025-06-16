@@ -11,20 +11,22 @@
         <h1>Data Pendaftar SPMB Jabar</h1>
 
         <div class="controls">
-            <label for="schoolFilter">Sekolah Tujuan:</label>
-            <select id="schoolFilter">
-                <% for (let npsn in schools) { %>
-                    <option value="<%= npsn %>" <%= npsn === defaultNPSN ? 'selected' : '' %>>
-                        <%= schools[npsn] %> (<%= npsn %>)
-                    </option>
+            <label for="cadisdikFilter">Cabang Dinas/Wilayah:</label> <select id="cadisdikFilter"> <option value="" disabled selected>Pilih Cabang Dinas/Wilayah</option>
+                <% for (const id in cadisdikMapping) { %>
+                    <option value="<%= id %>"><%= cadisdikMapping[id] %></option>
                 <% } %>
+            </select>
+
+            <label for="schoolFilter">Sekolah Tujuan:</label>
+            <select id="schoolFilter" disabled> 
+                <option value="" disabled selected>Silakan pilih Cabang Dinas/Wilayah dahulu</option>
             </select>
 
             <label for="optionTypeFilter">Jenis Pendaftaran:</label>
             <select id="optionTypeFilter">
+                <option value="" disabled>Pilih Jenis</option> 
                 <% optionTypes.forEach(type => { %>
-                    <option value="<%= type %>" <%= type === 'DOMISILI' ? 'selected' : '' %>><%= type %></option>
-                <% }); %>
+                    <option value="<%= type %>" <%= type === 'DOMISILI' ? 'selected' : '' %>><%= type %></option> <% }); %>
             </select>
             
             <input type="text" id="searchInput" placeholder="Cari Nama/No. Pendaftar/Sekolah...">
@@ -36,19 +38,21 @@
 
         <div class="summary-section">
             <h2>Rekapitulasi Asal Sekolah Pendaftar</h2>
-            <div id="schoolSummaryLoading" class="loading-small">Memuat rekapitulasi...</div>
-            <table id="schoolSummaryTable">
-                <thead>
-                    <tr>
-                        <th>Asal Sekolah</th>
-                        <th>Jumlah Pendaftar</th>
-                        <th>Persentase</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    </tbody>
-            </table>
-            <p id="noSummaryData" style="display: none;">Tidak ada data rekapitulasi asal sekolah.</p>
+            <div id="schoolSummaryLoading" class="loading-small"></div>
+            <div class="table-responsive">
+                <table id="schoolSummaryTable">
+                    <thead>
+                        <tr>
+                            <th>Asal Sekolah</th>
+                            <th>Jumlah Pendaftar</th>
+                            <th>Persentase</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        </tbody>
+                </table>
+            </div>
+            <p id="noSummaryData" class="info-message">Silakan pilih Cabang Dinas/Wilayah, Sekolah Tujuan, dan Jenis Pendaftaran untuk melihat rekapitulasi.</p>
         </div>
 
         <div class="table-container">
@@ -73,8 +77,8 @@
                     </tbody>
             </table>
         </div>
-        <p id="loadingMessage">Memuat data pendaftar... Mohon tunggu sebentar.</p>
-        <p id="noDataMessage" style="display: none;">Tidak ada data pendaftar ditemukan untuk kriteria ini.</p>
+        <p id="loadingMessage" class="info-message"></p>
+        <p id="noDataMessage" class="info-message">Silakan pilih Cabang Dinas/Wilayah, Sekolah Tujuan, dan Jenis Pendaftaran untuk melihat data pendaftar.</p>
     </div>
 
     <footer class="footer">
