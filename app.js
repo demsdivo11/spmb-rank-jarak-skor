@@ -2,7 +2,6 @@ const express = require('express');
 const axios = require('axios');
 const NodeCache = require('node-cache');
 const path = require('path');
-// const cheerio = require('cheerio'); // CHEERIO TIDAK LAGI DIBUTUHKAN, pastikan ini tidak ada
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -20,14 +19,6 @@ const OPTION_TYPES = {
     'KETM': 'ketm',
     'MUTASI': 'perpindahan'
 };
-
-// Middleware untuk menyajikan file statis (CSS, JS)
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Set engine view untuk HTML
-app.set('views', path.join(__dirname, 'views'));
-app.engine('html', require('ejs').renderFile);
-app.set('view engine', 'html'); // INI BARIS KRUSIAL YANG MEMPERBAIKI ERROR 'No default engine was specified'
 
 // --- Fungsi untuk Mengambil Daftar Cabang Dinas (Cadisdik ID dan Nama Tampilan) ---
 async function fetchCadisdikMapping() { 
@@ -55,7 +46,6 @@ async function fetchCadisdikMapping() {
             console.log(`[API Fetch] Finished fetching Cadisdik mapping. Total: ${Object.keys(cadisdikMapping).length}`);
         } catch (error) {
             console.error(`[API Error] Error fetching Cadisdik API:`, error.message);
-            // Fallback manual jika API gagal (diambil dari data API sebelumnya)
             cadisdikMapping = {
                 "1": "BOGOR, KOTA BOGOR, KOTA DEPOK", 
                 "2": "KOTA BOGOR, KOTA DEPOK",
@@ -299,19 +289,21 @@ app.get('/api/data', async (req, res) => {
         }
     });
 
-    // Logika Pengurutan Ranking
+    // --- LOGIKA PENGURUTAN (RANKING) BARU DI SINI ---
     filtered_data.sort((a, b) => {
-        const scoreA = a.score !== null ? a.score : -Infinity; 
-        const scoreB = b.score !== null ? b.score : -Infinity;
+        // Prioritas 1: Jarak terdekat (ascending - terdekat duluan)
+        const distance1A = a.distance_1 !== null ? a.distance_1 : Infinity; // Atasi jika distance_1 null
+        const distance1B = b.distance_1 !== null ? b.distance_1 : Infinity;
 
-        if (scoreA !== scoreB) {
-            return scoreB - scoreA; 
+        if (distance1A !== distance1B) {
+            return distance1A - distance1B; // Urutkan dari jarak terdekat ke terjauh
         }
 
-        const distance1A = a.distance_1 !== null ? a.distance_1 : Infinity; 
-        const distance1B = b.distance_1 !== null ? b.distance_1 : Infinity;
+        // Prioritas 2: Jika jarak sama, urutkan berdasarkan Score (descending - tertinggi duluan)
+        const scoreA = a.score !== null ? a.score : -Infinity; // Atasi jika score null
+        const scoreB = b.score !== null ? b.score : -Infinity;
         
-        return distance1A - distance1B; 
+        return scoreB - scoreA; // Urutkan dari score tertinggi ke terendah
     });
 
     const final_ranked_data = filtered_data.map((item, index) => ({
