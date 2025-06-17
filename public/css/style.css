@@ -53,6 +53,9 @@ h1, h2 {
 #optionTypeFilter {
     width: 180px; 
 }
+#originSchoolFilter { 
+    width: 250px; 
+}
 .controls input[type="text"] {
     flex-grow: 1; 
     min-width: 180px; 
@@ -76,7 +79,7 @@ h1, h2 {
     background-color: #0056b3;
 }
 
-.summary-section {
+.summary-section, .quota-section { /* BARU: QUOTA SECTION */
     margin-top: 30px;
     margin-bottom: 30px;
     padding: 15px;
@@ -109,12 +112,14 @@ h1, h2 {
     overflow-x: auto; /* Memastikan ini ada */
     -webkit-overflow-scrolling: touch; /* Untuk smooth scrolling di iOS */
     width: 100%; /* Memastikan kontainer mengambil 100% lebar yang tersedia */
+    max-width: 100%; /* BARU: Memastikan kontainer tidak melebihi lebar induknya */
     display: block; /* Memastikan itu berperilaku sebagai blok */
 }
 
+
 table {
-    width: 100%; /* Agar tabel mencoba mengisi lebar kontainer */
-    min-width: max-content; /* BARU: Agar tabel tidak menyusut terlalu kecil di dalam scroll */
+    width: 100%; /* Tabel mencoba mengisi 100% lebar kontainer */
+    /* min-width: max-content; DIHAPUS, karena width: 100% akan lebih diutamakan */
     border-collapse: collapse;
     margin-top: 20px;
 }
@@ -123,7 +128,7 @@ table th, table td {
     border: 1px solid #ddd;
     padding: 10px;
     text-align: left;
-    white-space: nowrap; /* Mencegah teks pilihan sekolah terpotong */
+    white-space: nowrap; 
 }
 
 table th {

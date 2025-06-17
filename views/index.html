@@ -11,7 +11,9 @@
         <h1>Data Pendaftar SPMB Jabar</h1>
 
         <div class="controls">
-            <label for="cadisdikFilter">Cabang Dinas/Wilayah:</label> <select id="cadisdikFilter"> <option value="" disabled selected>Pilih Cabang Dinas/Wilayah</option>
+            <label for="cadisdikFilter">Cabang Dinas/Wilayah:</label>
+            <select id="cadisdikFilter">
+                <option value="" disabled selected>Pilih Cabang Dinas/Wilayah</option>
                 <% for (const id in cadisdikMapping) { %>
                     <option value="<%= id %>"><%= cadisdikMapping[id] %></option>
                 <% } %>
@@ -26,9 +28,15 @@
             <select id="optionTypeFilter">
                 <option value="" disabled>Pilih Jenis</option> 
                 <% optionTypes.forEach(type => { %>
-                    <option value="<%= type %>" <%= type === 'DOMISILI' ? 'selected' : '' %>><%= type %></option> <% }); %>
+                    <option value="<%= type %>" <%= type === 'DOMISILI' ? 'selected' : '' %>><%= type %></option>
+                <% }); %>
             </select>
             
+            <label for="originSchoolFilter">Asal Sekolah Pendaftar:</label>
+            <select id="originSchoolFilter" disabled> 
+                <option value="ALL_SCHOOLS" selected>Semua Asal Sekolah</option>
+            </select>
+
             <input type="text" id="searchInput" placeholder="Cari Nama/No. Pendaftar/Sekolah...">
             <input type="number" id="minDistanceInput" placeholder="Min Jarak (Meter)">
             <input type="number" id="maxDistanceInput" placeholder="Max Jarak (Meter)">
@@ -79,6 +87,29 @@
         </div>
         <p id="loadingMessage" class="info-message"></p>
         <p id="noDataMessage" class="info-message">Silakan pilih Cabang Dinas/Wilayah, Sekolah Tujuan, dan Jenis Pendaftaran untuk melihat data pendaftar.</p>
+    </div>
+
+    <div class="quota-section">
+        <h2>Kuota Pendaftar (<span id="quotaSchoolName"></span>)</h2>
+        <div id="quotaLoading" class="loading-small">Memuat data kuota...</div>
+        <div class="table-responsive">
+            <table id="quotaTable">
+                <thead>
+                    <tr>
+                        <th>Jenis Kuota</th>
+                        <th>Kuota Awal</th>
+                        <th>Kuota Sisa</th>
+                        <th>Total Daftar</th>
+                        <th>Diverifikasi</th>
+                        <th>Tidak Verifikasi</th>
+                        <th>Dibatalkan</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+        </div>
+        <p id="noQuotaData" class="info-message" style="display: none;">Tidak ada data kuota ditemukan untuk sekolah ini.</p>
     </div>
 
     <footer class="footer">

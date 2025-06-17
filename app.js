@@ -2,7 +2,6 @@ const express = require('express');
 const axios = require('axios');
 const NodeCache = require('node-cache');
 const path = require('path');
-// const cheerio = require('cheerio'); // CHEERIO TIDAK LAGI DIBUTUHKAN, pastikan ini tidak ada
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -21,13 +20,17 @@ const OPTION_TYPES = {
     'MUTASI': 'perpindahan'
 };
 
+// --- GLOBAL MAPS UNTUK LOGGING & LOOKUP ---
+let cadisdikDisplayNameMap = {}; 
+let npsnToSchoolNameMap = {}; 
+
 // Middleware untuk menyajikan file statis (CSS, JS)
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Set engine view untuk HTML
 app.set('views', path.join(__dirname, 'views'));
 app.engine('html', require('ejs').renderFile);
-app.set('view engine', 'html'); // INI BARIS KRUSIAL YANG MEMPERBAIKI ERROR 'No default engine was specified'
+app.set('view engine', 'html'); // Memperbaiki error 'No default engine was specified'
 
 // --- Fungsi untuk Mengambil Daftar Cabang Dinas (Cadisdik ID dan Nama Tampilan) ---
 async function fetchCadisdikMapping() { 
@@ -47,7 +50,7 @@ async function fetchCadisdikMapping() {
             cadisdikList.forEach(item => {
                 const cadisdikId = item.cadisdik;
                 const citiesText = item.city.join(', '); 
-                const displayName = citiesText; // HANYA WILAYAHNYA SAJA 
+                const displayName = citiesText; 
                 cadisdikMapping[cadisdikId] = displayName;
             });
             
@@ -74,12 +77,13 @@ async function fetchCadisdikMapping() {
             console.log('[API Fetch] Using static Cadisdik list as fallback.');
         }
     }
+    cadisdikDisplayNameMap = cadisdikMapping; // SET GLOBAL MAP untuk logging
     return cadisdikMapping;
 }
 
 
 // --- Fungsi untuk Mengambil Daftar Sekolah berdasarkan Cadisdik ID ---
-async function fetchSchoolsByCadisdik(cadisdikId, limit = 100) { // Default limit 100
+async function fetchSchoolsByCadisdik(cadisdikId, limit = 100) { 
     if (!cadisdikId) { 
         return {};
     }
@@ -139,6 +143,7 @@ async function fetchSchoolsByCadisdik(cadisdikId, limit = 100) { // Default limi
         schools = allSchools.reduce((acc, school) => {
             if (school.npsn && school.name) {
                 acc[school.npsn] = school.name;
+                npsnToSchoolNameMap[school.npsn] = school.name; // SET GLOBAL MAP untuk logging
             }
             return acc;
         }, {});
@@ -148,7 +153,7 @@ async function fetchSchoolsByCadisdik(cadisdikId, limit = 100) { // Default limi
     return schools;
 }
 
-// Fungsi untuk Mengambil Data Pendaftaran (Tidak Berubah)
+// Fungsi untuk Mengambil Data Pendaftaran
 async function fetchRegistrationData(npsn, optionType, limit = 100) { 
     if (!npsn || !optionType) { 
         return [];
@@ -179,7 +184,6 @@ async function fetchRegistrationData(npsn, optionType, limit = 100) {
         };
 
         try {
-            console.log(`[API Request] Requesting registration page ${pageNum}/${totalPages} for ${npsn} (${apiValue})...`);
             const response = await axios.get(BASE_REGISTRATION_API_URL, { params: params, timeout: 15000 });
             
             const responseData = response.data.result.itemsList; 
@@ -213,6 +217,30 @@ async function fetchRegistrationData(npsn, optionType, limit = 100) {
     return allData;
 }
 
+// --- Fungsi untuk Mengambil Detail Sekolah dan Data Kuota ---
+async function fetchSchoolDetailsAndQuota(npsn) {
+    if (!npsn) {
+        return null;
+    }
+    const cacheKey = `school_details_${npsn}`;
+    let schoolDetails = myCache.get(cacheKey);
+
+    if (!schoolDetails) {
+        console.log(`[API Fetch] Fetching school details for NPSN: ${npsn}...`);
+        try {
+            const response = await axios.get(`${BASE_SCHOOL_API_URL}/${npsn}?populate=options`, { timeout: 15000 });
+            schoolDetails = response.data.result;
+            myCache.set(cacheKey, schoolDetails);
+            console.log(`[API Fetch] Finished fetching school details for NPSN: ${npsn}.`);
+        } catch (error) {
+            console.error(`[API Error] Error fetching school details for NPSN ${npsn}:`, error.message);
+            return null;
+        }
+    }
+    return schoolDetails;
+}
+
+
 // --- Endpoint untuk halaman utama ---
 app.get('/', async (req, res) => {
     const cadisdikMapping = await fetchCadisdikMapping(); 
@@ -230,9 +258,27 @@ app.get('/api/cadisdik', async (req, res) => {
 
 // --- Endpoint API untuk mendapatkan daftar sekolah berdasarkan ID Cadisdik ---
 app.get('/api/schools', async (req, res) => {
-    const cadisdikId = req.query.cadisdik_id; // Ambil cadisdik_id dari query
+    const cadisdikId = req.query.cadisdik_id; 
     const schools = await fetchSchoolsByCadisdik(cadisdikId);
     res.json(schools);
+});
+
+// --- Endpoint API untuk mendapatkan detail sekolah dan kuota ---
+app.get('/api/school-details', async (req, res) => {
+    const npsn = req.query.npsn;
+    if (!npsn) {
+        return res.status(400).json({ message: "NPSN is required" });
+    }
+    const details = await fetchSchoolDetailsAndQuota(npsn);
+    if (details) {
+        res.json({
+            schoolName: details.name, 
+            statistics: details.statistics,
+            options: details.edges && details.edges.options ? details.edges.options : []
+        });
+    } else {
+        res.status(404).json({ message: "School details not found or error fetching" });
+    }
 });
 
 
@@ -243,9 +289,26 @@ app.get('/api/data', async (req, res) => {
     const search_query = req.query.search ? req.query.search.toLowerCase() : '';
     const min_distance = req.query.min_distance ? parseFloat(req.query.min_distance) : null;
     const max_distance = req.query.max_distance ? parseFloat(req.query.max_distance) : null;
+    const origin_school_name_filter = req.query.origin_school_name || ''; 
+    const cadisdikIdFromFrontend = req.query.cadisdik_id; 
+
+    // --- Logging detail pencarian ---
+    const targetSmaName = npsnToSchoolNameMap[npsn] || `NPSN: ${npsn} (Nama tidak diketahui)`;
+    const cadisdikRegionName = cadisdikDisplayNameMap[cadisdikIdFromFrontend] || `ID Cadisdik: ${cadisdikIdFromFrontend} (Tidak diketahui)`;
+
+    console.log(`\n--- NEW REQUEST LOG ---`);
+    console.log(`Cadisdik/Wilayah: ${cadisdikRegionName}`);
+    console.log(`Target SMA: ${targetSmaName}`);
+    console.log(`Jenis Pendaftaran: ${optionType || 'Tidak dipilih'}`);
+    console.log(`Cari Nama/No. Pendaftar: "${search_query || 'Kosong'}"`);
+    console.log(`Filter Asal Sekolah: "${origin_school_name_filter || 'Semua Asal Sekolah'}"`);
+    console.log(`Filter Jarak Min: ${min_distance !== null ? min_distance : 'Kosong'}`);
+    console.log(`Filter Jarak Max: ${max_distance !== null ? max_distance : 'Kosong'}`);
+    console.log(`-----------------------\n`);
+
 
     if (!npsn || !optionType) { 
-        return res.json([]);
+        return res.json({ filteredData: [], uniqueOriginSchools: [] }); 
     }
 
     const cacheKey = `registration_data_${npsn}_${optionType.toLowerCase()}`;
@@ -259,6 +322,16 @@ app.get('/api/data', async (req, res) => {
     } else {
         console.log(`[Cache] Data for NPSN ${npsn} and ${optionType} served from cache.`);
     }
+
+    // Ekstrak daftar asal sekolah unik dari data LENGKAP (sebelum filter asal sekolah)
+    const uniqueOriginSchoolsSet = new Set();
+    data.forEach(entry => {
+        if (entry.school_name) {
+            uniqueOriginSchoolsSet.add(entry.school_name);
+        }
+    });
+    const uniqueOriginSchools = Array.from(uniqueOriginSchoolsSet).sort();
+
 
     let filtered_data = [];
     data.forEach((entry) => { 
@@ -294,24 +367,34 @@ app.get('/api/data', async (req, res) => {
             }
         }
 
-        if (match_search && match_distance) {
+        let match_origin_school = true;
+        if (origin_school_name_filter && origin_school_name_filter !== 'ALL_SCHOOLS') {
+            if (entry.school_name !== origin_school_name_filter) {
+                match_origin_school = false;
+            }
+        }
+
+
+        if (match_search && match_distance && match_origin_school) { 
             filtered_data.push(entry);
         }
     });
 
     // Logika Pengurutan Ranking
     filtered_data.sort((a, b) => {
-        const scoreA = a.score !== null ? a.score : -Infinity; 
-        const scoreB = b.score !== null ? b.score : -Infinity;
-
-        if (scoreA !== scoreB) {
-            return scoreB - scoreA; 
-        }
-
+        // Prioritas 1: Jarak terdekat (ascending - terdekat duluan)
         const distance1A = a.distance_1 !== null ? a.distance_1 : Infinity; 
         const distance1B = b.distance_1 !== null ? b.distance_1 : Infinity;
+
+        if (distance1A !== distance1B) {
+            return distance1A - distance1B; 
+        }
+
+        // Prioritas 2: Jika jarak sama, urutkan berdasarkan Score (descending - tertinggi duluan)
+        const scoreA = a.score !== null ? a.score : -Infinity; 
+        const scoreB = b.score !== null ? b.score : -Infinity;
         
-        return distance1A - distance1B; 
+        return scoreB - scoreA; 
     });
 
     const final_ranked_data = filtered_data.map((item, index) => ({
@@ -319,7 +402,10 @@ app.get('/api/data', async (req, res) => {
         ranking_filtered: index + 1 
     }));
 
-    res.json(final_ranked_data); 
+    res.json({
+        filteredData: final_ranked_data,
+        uniqueOriginSchools: uniqueOriginSchools
+    }); 
 });
 
 // Jalankan server Express
