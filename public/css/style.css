@@ -56,6 +56,9 @@ h1, h2 {
 #originSchoolFilter { 
     width: 250px; 
 }
+#scoreOrderFilter { 
+    width: 150px;
+}
 .controls input[type="text"] {
     flex-grow: 1; 
     min-width: 180px; 
@@ -79,7 +82,13 @@ h1, h2 {
     background-color: #0056b3;
 }
 
-.summary-section, .quota-section { /* BARU: QUOTA SECTION */
+/* Gaya untuk menyembunyikan kontrol */
+.hidden-control {
+    display: none !important;
+}
+
+
+.summary-section, .quota-section { 
     margin-top: 30px;
     margin-bottom: 30px;
     padding: 15px;
@@ -101,25 +110,34 @@ h1, h2 {
     font-style: italic;
     color: #666;
 }
+.disclaimer { 
+    font-size: 0.9em;
+    padding: 10px;
+    background-color: #fff3cd;
+    border-left: 5px solid #ffc107;
+    margin-top: 20px;
+    color: #856404;
+    border-radius: 4px;
+    display: none; 
+}
 
-/* Untuk kedua tabel responsif */
-.table-responsive { /* Ini sudah diterapkan pada tabel rekapitulasi */
+
+.table-responsive {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch; 
 }
 
-.table-container { /* PERUBAHAN DI SINI */
-    overflow-x: auto; /* Memastikan ini ada */
-    -webkit-overflow-scrolling: touch; /* Untuk smooth scrolling di iOS */
-    width: 100%; /* Memastikan kontainer mengambil 100% lebar yang tersedia */
-    max-width: 100%; /* BARU: Memastikan kontainer tidak melebihi lebar induknya */
-    display: block; /* Memastikan itu berperilaku sebagai blok */
+.table-container { 
+    overflow-x: auto; 
+    -webkit-overflow-scrolling: touch; 
+    width: 100%; 
+    max-width: 100%; 
+    display: block; 
 }
 
-
 table {
-    width: 100%; /* Tabel mencoba mengisi 100% lebar kontainer */
-    /* min-width: max-content; DIHAPUS, karena width: 100% akan lebih diutamakan */
+    width: 100%; 
+    min-width: max-content; /* KEMBALIKAN INI untuk memastikan tabel cukup lebar dan bisa di-scroll */
     border-collapse: collapse;
     margin-top: 20px;
 }
@@ -142,6 +160,14 @@ table tbody tr:nth-child(even) {
 
 table tbody tr:hover {
     background-color: #eaeaea;
+}
+
+/* Gaya untuk menyembunyikan kolom jarak */
+.dist-col {
+    display: table-cell; 
+}
+.hide-dist-col { 
+    display: none !important;
 }
 
 

@@ -3,12 +3,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const schoolFilter = document.getElementById('schoolFilter');
     const optionTypeFilter = document.getElementById('optionTypeFilter');
     const originSchoolFilter = document.getElementById('originSchoolFilter'); 
+    const scoreOrderFilter = document.getElementById('scoreOrderFilter'); 
+    const scoreOrderControl = document.getElementById('scoreOrderControl'); 
     const searchInput = document.getElementById('searchInput');
     const minDistanceInput = document.getElementById('minDistanceInput');
     const maxDistanceInput = document.getElementById('maxDistanceInput');
     const applyFiltersButton = document.getElementById('applyFilters');
     const clearFiltersButton = document.getElementById('clearFilters');
-    const dataTableBody = document.querySelector('#dataTable tbody');
+    const dataTable = document.getElementById('dataTable'); 
+    const dataTableBody = dataTable.querySelector('tbody'); 
     const loadingMessage = document.getElementById('loadingMessage');
     const noDataMessage = document.getElementById('noDataMessage');
 
@@ -16,12 +19,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const schoolSummaryLoading = document.getElementById('schoolSummaryLoading');
     const noSummaryData = document.getElementById('noSummaryData');
 
-    // Elemen untuk Kuota Pendaftar
     const quotaSection = document.querySelector('.quota-section');
     const quotaSchoolName = document.getElementById('quotaSchoolName');
     const quotaLoading = document.getElementById('quotaLoading');
     const quotaTableBody = document.querySelector('#quotaTable tbody');
     const noQuotaData = document.getElementById('noQuotaData');
+
+    const raporDisclaimer = document.getElementById('raporDisclaimer'); 
 
 
     // --- Fungsi untuk mengisi dropdown sekolah ---
@@ -85,10 +89,12 @@ document.addEventListener('DOMContentLoaded', function() {
             option.textContent = schoolName;
             originSchoolFilter.appendChild(option);
         });
+        // Pastikan filter asal sekolah terpilih kembali ke "Semua Asal Sekolah" setelah populasi
+        originSchoolFilter.value = "ALL_SCHOOLS"; // FIX BUG INI
     }
 
 
-    // Fungsi untuk menghitung rekapitulasi asal sekolah
+    // Fungsi untuk menghitung rekapitulasi asal sekolah (Tidak Berubah)
     function generateSchoolSummary(data) {
         const schoolCounts = {};
         let totalPendaftar = 0;
@@ -119,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
 
-    // --- Fungsi untuk Mengambil dan Menampilkan Data Kuota ---
+    // Fungsi untuk Mengambil dan Menampilkan Data Kuota (Tidak Berubah)
     async function fetchAndDisplayQuotaData(npsn) {
         quotaSchoolName.textContent = ''; 
         quotaLoading.style.display = 'block';
@@ -159,14 +165,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const combinedQuotaData = {}; 
 
-            // Step 1: Inisialisasi dengan data dari 'options' (kuota awal/sisa)
             if (data.options) {
                 data.options.forEach(option => {
-                    combinedQuotaData[option.type] = { // Kunci berdasarkan option.type (misal: 'zonasi', 'anak-guru')
-                        jenisKuota: option.name, // Nama yang ditampilkan (misal: "SMAN 1 CIKANCUNG - DOMISILI")
+                    combinedQuotaData[option.type] = { 
+                        jenisKuota: option.name, 
                         initialQuota: option.initial_quota,
                         quota: option.quota,
-                        totalRegistration: 'N/A', // Default N/A, akan diupdate dari statistics
+                        totalRegistration: 'N/A', 
                         totalVerified: 'N/A',
                         totalNotVerified: 'N/A',
                         totalCanceled: 'N/A'
@@ -174,17 +179,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
 
-            // Step 2: Perbarui dengan data dari 'statistics' (jumlah pendaftaran)
             if (data.statistics) {
                 data.statistics.forEach(stat => {
-                    // Cari 'type' yang sesuai di array 'options' berdasarkan nama 'stat.option'
                     const correspondingOption = data.options ? data.options.find(opt => opt.name === stat.option) : null;
-                    const keyToUpdate = correspondingOption ? correspondingOption.type : stat.option; // Gunakan type jika ditemukan, jika tidak, pakai nama mentah dari stat
+                    const keyToUpdate = correspondingOption ? correspondingOption.type : stat.option; 
 
-                    // Pastikan entri ini sudah ada atau buat baru jika hanya ada di statistics
                     if (!combinedQuotaData[keyToUpdate]) {
                          combinedQuotaData[keyToUpdate] = {
-                             jenisKuota: stat.option, // Jika tidak ada di options, gunakan nama ini
+                             jenisKuota: stat.option, 
                              initialQuota: 'N/A', 
                              quota: 'N/A',
                          };
@@ -226,7 +228,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
 
-    async function fetchData(npsn, optionType, originSchoolName, searchQuery = '', minDistance = '', maxDistance = '') { 
+    // --- Fungsi Utama untuk Mengambil dan Menampilkan Data Pendaftar ---
+    async function fetchData(npsn, optionType, originSchoolName, searchQuery = '', minDistance = '', maxDistance = '', orderByScore = null) { 
         // Sembunyikan pesan lama dan bersihkan tabel
         loadingMessage.style.display = 'none';
         noDataMessage.style.display = 'none';
@@ -270,6 +273,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (searchQuery) params.append('search', searchQuery);
             if (minDistance) params.append('min_distance', minDistance);
             if (maxDistance) params.append('max_distance', maxDistance);
+            // Kirim parameter pengurutan score jika jenis pendaftaran adalah prestasi rapor
+            if (optionType.toUpperCase() === 'PRESTASI-RAPOR') {
+                params.append('order_by_score', orderByScore || 'desc'); 
+            }
 
             const response = await fetch(`/api/data?${params.toString()}`);
             if (!response.ok) {
@@ -284,7 +291,19 @@ document.addEventListener('DOMContentLoaded', function() {
             loadingMessage.style.display = 'none';
             schoolSummaryLoading.style.display = 'none'; 
             
+            // Populasikan filter asal sekolah (PENTING: lakukan ini sebelum memfilter data di client-side)
             populateOriginSchoolFilter(uniqueOriginSchools); 
+
+            // Logika menyembunyikan/menampilkan kolom jarak di header
+            const distanceColHeaders = dataTable.querySelectorAll('th.dist-col');
+            if (optionType.toUpperCase() === 'PRESTASI-RAPOR') {
+                distanceColHeaders.forEach(th => th.classList.add('hide-dist-col'));
+                raporDisclaimer.style.display = 'block'; 
+            } else {
+                distanceColHeaders.forEach(th => th.classList.remove('hide-dist-col'));
+                raporDisclaimer.style.display = 'none'; 
+            }
+
 
             if (data.length === 0) {
                 noDataMessage.style.display = 'block';
@@ -311,11 +330,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     row.insertCell().textContent = item.school_name || 'N/A'; 
                     row.insertCell().textContent = item.first_option_name || 'N/A'; 
-                    row.insertCell().textContent = item.distance_1 !== null ? item.distance_1 : 'N/A'; 
+                    
+                    // PERBAIKAN: Selalu buat <td> untuk kolom jarak, tapi tambahkan kelas 'hide-dist-col' jika Prestasi Rapor
+                    const distance1Cell = row.insertCell();
+                    const distance2Cell = row.insertCell();
+                    const distance3Cell = row.insertCell();
+
+                    if (optionType.toUpperCase() === 'PRESTASI-RAPOR') {
+                        distance1Cell.classList.add('hide-dist-col'); 
+                        distance2Cell.classList.add('hide-dist-col');
+                        distance3Cell.classList.add('hide-dist-col');
+                    }
+                    
+                    distance1Cell.textContent = item.distance_1 !== null ? item.distance_1 : 'N/A'; 
+                    distance2Cell.textContent = item.distance_2 !== null ? item.distance_2 : 'N/A'; 
+                    distance3Cell.textContent = item.distance_3 !== null ? item.distance_3 : 'N/A'; 
+                    
                     row.insertCell().textContent = item.second_option_name || 'N/A'; 
-                    row.insertCell().textContent = item.distance_2 !== null ? item.distance_2 : 'N/A'; 
                     row.insertCell().textContent = item.third_option_name || 'N/A'; 
-                    row.insertCell().textContent = item.distance_3 !== null ? item.distance_3 : 'N/A'; 
                 });
             }
 
@@ -328,13 +360,11 @@ document.addEventListener('DOMContentLoaded', function() {
             noSummaryData.style.display = 'block';
             originSchoolFilter.innerHTML = '<option value="ALL_SCHOOLS" selected>Gagal memuat Asal Sekolah</option>';
             originSchoolFilter.disabled = true;
-            // Pastikan pesan error kuota juga muncul jika fetch data utama gagal
             quotaLoading.style.display = 'none';
             noQuotaData.textContent = 'Gagal memuat data kuota.';
             noQuotaData.style.display = 'block';
 
         } finally {
-            // Selalu panggil fungsi kuota setelah data utama selesai di-fetch atau error
             fetchAndDisplayQuotaData(npsn); 
         }
     }
@@ -344,10 +374,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const selectedNPSN = schoolFilter.value; 
         const selectedOptionType = optionTypeFilter.value;
         const selectedOriginSchool = originSchoolFilter.value; 
+        const selectedScoreOrder = scoreOrderFilter.value; 
         const searchQuery = searchInput.value;
         const minDistance = minDistanceInput.value;
         const maxDistance = maxDistanceInput.value;
-        fetchData(selectedNPSN, selectedOptionType, selectedOriginSchool, searchQuery, minDistance, maxDistance); 
+        fetchData(selectedNPSN, selectedOptionType, selectedOriginSchool, searchQuery, minDistance, maxDistance, selectedScoreOrder); 
     }
 
     applyFiltersButton.addEventListener('click', reloadData);
@@ -356,9 +387,11 @@ document.addEventListener('DOMContentLoaded', function() {
         cadisdikFilter.value = ""; 
         schoolFilter.innerHTML = '<option value="" disabled selected>Silakan pilih Cabang Dinas/Wilayah dahulu</option>'; 
         schoolFilter.disabled = true;
-        optionTypeFilter.value = "DOMISILI"; 
+        optionTypeFilter.value = "PRESTASI-RAPOR"; // PERUBAHAN: DEFAULT PRESTASI-RAPOR
         originSchoolFilter.innerHTML = '<option value="ALL_SCHOOLS" selected>Semua Asal Sekolah</option>'; 
         originSchoolFilter.disabled = true; 
+        scoreOrderControl.classList.remove('hidden-control'); // Pastikan ini TAMPIL jika default prestasi rapor
+        scoreOrderFilter.value = 'desc'; 
         searchInput.value = '';
         minDistanceInput.value = '';
         maxDistanceInput.value = '';
@@ -368,9 +401,11 @@ document.addEventListener('DOMContentLoaded', function() {
     cadisdikFilter.addEventListener('change', () => {
         const selectedCadisdikId = cadisdikFilter.value;
         populateSchoolFilter(selectedCadisdikId).then(() => { 
-            optionTypeFilter.value = "DOMISILI"; 
+            optionTypeFilter.value = "PRESTASI-RAPOR"; // PERUBAHAN: DEFAULT PRESTASI-RAPOR
             originSchoolFilter.innerHTML = '<option value="ALL_SCHOOLS" selected>Semua Asal Sekolah</option>'; 
             originSchoolFilter.disabled = true;
+            scoreOrderControl.classList.remove('hidden-control'); // Pastikan ini TAMPIL
+            scoreOrderFilter.value = 'desc'; 
             searchInput.value = ''; 
             minDistanceInput.value = '';
             maxDistanceInput.value = '';
@@ -379,16 +414,28 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     schoolFilter.addEventListener('change', () => {
-        optionTypeFilter.value = "DOMISILI"; 
+        optionTypeFilter.value = "PRESTASI-RAPOR"; // PERUBAHAN: DEFAULT PRESTASI-RAPOR
         originSchoolFilter.innerHTML = '<option value="ALL_SCHOOLS" selected>Semua Asal Sekolah</option>'; 
         originSchoolFilter.disabled = true;
+        scoreOrderControl.classList.remove('hidden-control'); // Pastikan ini TAMPIL
+        scoreOrderFilter.value = 'desc'; 
         searchInput.value = '';
         minDistanceInput.value = '';
         maxDistanceInput.value = '';
         reloadData();
     });
 
+    // Event listener untuk perubahan dropdown Jenis Pendaftaran
     optionTypeFilter.addEventListener('change', () => {
+        const selectedOptionType = optionTypeFilter.value;
+        // Tampilkan/sembunyikan kontrol pengurutan score
+        if (selectedOptionType.toUpperCase() === 'PRESTASI-RAPOR') {
+            scoreOrderControl.classList.remove('hidden-control'); 
+        } else {
+            scoreOrderControl.classList.add('hidden-control'); 
+            scoreOrderFilter.value = 'desc'; 
+        }
+
         originSchoolFilter.innerHTML = '<option value="ALL_SCHOOLS" selected>Semua Asal Sekolah</option>'; 
         originSchoolFilter.disabled = true;
         searchInput.value = '';
@@ -397,10 +444,12 @@ document.addEventListener('DOMContentLoaded', function() {
         reloadData();
     });
 
-    originSchoolFilter.addEventListener('change', reloadData);
+    scoreOrderFilter.addEventListener('change', reloadData);
+
+    originSchoolFilter.addEventListener('change', reloadData); // BARU: Menambahkan event listener ini
 
     searchInput.addEventListener('input', reloadData);
 
-    // Initial load: Hanya tampilkan pesan instruksi
+    // Initial load: Panggil reloadData untuk menampilkan pesan instruksi (akan default ke Prestasi Rapor)
     reloadData(); 
 });

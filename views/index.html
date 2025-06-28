@@ -28,14 +28,21 @@
             <select id="optionTypeFilter">
                 <option value="" disabled>Pilih Jenis</option> 
                 <% optionTypes.forEach(type => { %>
-                    <option value="<%= type %>" <%= type === 'DOMISILI' ? 'selected' : '' %>><%= type %></option>
-                <% }); %>
+                    <option value="<%= type %>" <%= type === 'PRESTASI-RAPOR' ? 'selected' : '' %>><%= type %></option> <% }); %>
             </select>
             
             <label for="originSchoolFilter">Asal Sekolah Pendaftar:</label>
             <select id="originSchoolFilter" disabled> 
                 <option value="ALL_SCHOOLS" selected>Semua Asal Sekolah</option>
             </select>
+
+            <div id="scoreOrderControl" class="hidden-control">
+                <label for="scoreOrderFilter">Urutkan Nilai:</label>
+                <select id="scoreOrderFilter">
+                    <option value="desc">Nilai Terbesar</option>
+                    <option value="asc">Nilai Terkecil</option>
+                </select>
+            </div>
 
             <input type="text" id="searchInput" placeholder="Cari Nama/No. Pendaftar/Sekolah...">
             <input type="number" id="minDistanceInput" placeholder="Min Jarak (Meter)">
@@ -73,12 +80,12 @@
                         <th>Nomor Pendaftar</th>
                         <th>Nama</th>
                         <th>Asal Sekolah</th>
-                        <th>Pilihan 1</th>
-                        <th>Jarak 1 (m)</th>
-                        <th>Pilihan 2</th>
-                        <th>Jarak 2 (m)</th>
-                        <th>Pilihan 3</th>
-                        <th>Jarak 3 (m)</th>
+                        <th class="dist-col">Pilihan 1</th>
+                        <th class="dist-col">Jarak 1 (m)</th>
+                        <th class="dist-col">Pilihan 2</th>
+                        <th class="dist-col">Jarak 2 (m)</th>
+                        <th class="dist-col">Pilihan 3</th>
+                        <th class="dist-col">Jarak 3 (m)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -87,6 +94,10 @@
         </div>
         <p id="loadingMessage" class="info-message"></p>
         <p id="noDataMessage" class="info-message">Silakan pilih Cabang Dinas/Wilayah, Sekolah Tujuan, dan Jenis Pendaftaran untuk melihat data pendaftar.</p>
+        
+        <div id="raporDisclaimer" class="info-message disclaimer">
+            Sesuai dengan SPMB, ini bukan nilai fix! Nilai fix-nya adalah 50% nilai rapor + 50% nilai tes terstandar.
+        </div>
     </div>
 
     <div class="quota-section">

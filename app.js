@@ -17,7 +17,8 @@ const BASE_CADISDIK_API_URL = "https://spmb.jabarprov.go.id/api/public/cadisdik"
 const OPTION_TYPES = {
     'DOMISILI': 'zonasi',
     'KETM': 'ketm',
-    'MUTASI': 'perpindahan'
+    'MUTASI': 'perpindahan',
+    'PRESTASI-RAPOR': 'prestasi-rapor'
 };
 
 // --- GLOBAL MAPS UNTUK LOGGING & LOOKUP ---
@@ -30,7 +31,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Set engine view untuk HTML
 app.set('views', path.join(__dirname, 'views'));
 app.engine('html', require('ejs').renderFile);
-app.set('view engine', 'html'); // Memperbaiki error 'No default engine was specified'
+app.set('view engine', 'html'); 
 
 // --- Fungsi untuk Mengambil Daftar Cabang Dinas (Cadisdik ID dan Nama Tampilan) ---
 async function fetchCadisdikMapping() { 
@@ -58,7 +59,6 @@ async function fetchCadisdikMapping() {
             console.log(`[API Fetch] Finished fetching Cadisdik mapping. Total: ${Object.keys(cadisdikMapping).length}`);
         } catch (error) {
             console.error(`[API Error] Error fetching Cadisdik API:`, error.message);
-            // Fallback manual jika API gagal (diambil dari data API sebelumnya)
             cadisdikMapping = {
                 "1": "BOGOR, KOTA BOGOR, KOTA DEPOK", 
                 "2": "KOTA BOGOR, KOTA DEPOK",
@@ -77,7 +77,7 @@ async function fetchCadisdikMapping() {
             console.log('[API Fetch] Using static Cadisdik list as fallback.');
         }
     }
-    cadisdikDisplayNameMap = cadisdikMapping; // SET GLOBAL MAP untuk logging
+    cadisdikDisplayNameMap = cadisdikMapping; 
     return cadisdikMapping;
 }
 
@@ -143,7 +143,7 @@ async function fetchSchoolsByCadisdik(cadisdikId, limit = 100) {
         schools = allSchools.reduce((acc, school) => {
             if (school.npsn && school.name) {
                 acc[school.npsn] = school.name;
-                npsnToSchoolNameMap[school.npsn] = school.name; // SET GLOBAL MAP untuk logging
+                npsnToSchoolNameMap[school.npsn] = school.name; 
             }
             return acc;
         }, {});
@@ -153,8 +153,8 @@ async function fetchSchoolsByCadisdik(cadisdikId, limit = 100) {
     return schools;
 }
 
-// Fungsi untuk Mengambil Data Pendaftaran
-async function fetchRegistrationData(npsn, optionType, limit = 100) { 
+// --- Fungsi fetchRegistrationData (Tidak Berubah) ---
+async function fetchRegistrationData(npsn, optionType, orderByScore = null, limit = 100) { 
     if (!npsn || !optionType) { 
         return [];
     }
@@ -166,24 +166,33 @@ async function fetchRegistrationData(npsn, optionType, limit = 100) {
 
     console.log(`[API Fetch] Starting to fetch registration data for NPSN: ${npsn}, Option Type: ${optionType} (API value: ${apiValue})`);
 
+    const params = {
+        pagination: true,
+        'columns[0][key]': 'name',
+        'columns[0][searchable]': false,
+        'columns[1][key]': 'registration_number',
+        'columns[1][searchable]': true,
+        npsn: npsn, 
+        'filters[1][key]': 'option_type',
+        'filters[1][value]': apiValue,
+        'major_id': '' 
+    };
+
+    if (optionType.toUpperCase() === 'PRESTASI-RAPOR') {
+        params.orderby = 'score'; 
+        params.order = orderByScore === 'asc' ? 'asc' : 'desc'; 
+    } else {
+        params.orderby = 'distance_1';
+        params.order = 'asc';
+    }
+
+
     while (pageNum <= totalPages) {
-        const params = {
-            page: pageNum,
-            limit: limit, 
-            orderby: 'distance_1', 
-            order: 'asc',         
-            pagination: true,
-            'columns[0][key]': 'name',
-            'columns[0][searchable]': false,
-            'columns[1][key]': 'registration_number',
-            'columns[1][searchable]': true,
-            npsn: npsn, 
-            'filters[1][key]': 'option_type',
-            'filters[1][value]': apiValue,
-            'major_id': '' 
-        };
+        params.page = pageNum;
+        params.limit = limit; 
 
         try {
+            console.log(`[API Request] Requesting registration page ${pageNum}/${totalPages} for ${npsn} (${apiValue}) with orderby=${params.orderby}, order=${params.order}...`);
             const response = await axios.get(BASE_REGISTRATION_API_URL, { params: params, timeout: 15000 });
             
             const responseData = response.data.result.itemsList; 
@@ -208,7 +217,7 @@ async function fetchRegistrationData(npsn, optionType, limit = 100) {
         } catch (error) {
             console.error(`[API Error] Error fetching registration data for ${npsn} (${optionType}) page ${pageNum}:`, error.message);
             if (error.response) {
-                console.error(`[API Error] Status: ${error.response.status}, Response Data: ${JSON.stringify(error.response.data)}`);
+                console.error(`[API Error] Status: ${error.response.status}, Data: ${JSON.stringify(error.response.data)}`);
             }
             break; 
         }
@@ -217,7 +226,7 @@ async function fetchRegistrationData(npsn, optionType, limit = 100) {
     return allData;
 }
 
-// --- Fungsi untuk Mengambil Detail Sekolah dan Data Kuota ---
+// --- Fungsi fetchSchoolDetailsAndQuota (Tidak Berubah) ---
 async function fetchSchoolDetailsAndQuota(npsn) {
     if (!npsn) {
         return null;
@@ -291,6 +300,7 @@ app.get('/api/data', async (req, res) => {
     const max_distance = req.query.max_distance ? parseFloat(req.query.max_distance) : null;
     const origin_school_name_filter = req.query.origin_school_name || ''; 
     const cadisdikIdFromFrontend = req.query.cadisdik_id; 
+    const orderByScore = req.query.order_by_score; 
 
     // --- Logging detail pencarian ---
     const targetSmaName = npsnToSchoolNameMap[npsn] || `NPSN: ${npsn} (Nama tidak diketahui)`;
@@ -300,6 +310,7 @@ app.get('/api/data', async (req, res) => {
     console.log(`Cadisdik/Wilayah: ${cadisdikRegionName}`);
     console.log(`Target SMA: ${targetSmaName}`);
     console.log(`Jenis Pendaftaran: ${optionType || 'Tidak dipilih'}`);
+    console.log(`Urutan Score (jika relevan): ${orderByScore || 'N/A'}`); 
     console.log(`Cari Nama/No. Pendaftar: "${search_query || 'Kosong'}"`);
     console.log(`Filter Asal Sekolah: "${origin_school_name_filter || 'Semua Asal Sekolah'}"`);
     console.log(`Filter Jarak Min: ${min_distance !== null ? min_distance : 'Kosong'}`);
@@ -316,7 +327,7 @@ app.get('/api/data', async (req, res) => {
 
     if (!data) {
         console.log(`[Cache] Data for NPSN ${npsn} and ${optionType} not in cache or expired. Fetching from API now...`);
-        data = await fetchRegistrationData(npsn, optionType); 
+        data = await fetchRegistrationData(npsn, optionType, orderByScore); 
         myCache.set(cacheKey, data);
         console.log(`[Cache] Data for NPSN ${npsn} and ${optionType} fetched and cached.`);
     } else {
@@ -381,21 +392,27 @@ app.get('/api/data', async (req, res) => {
     });
 
     // Logika Pengurutan Ranking
-    filtered_data.sort((a, b) => {
-        // Prioritas 1: Jarak terdekat (ascending - terdekat duluan)
-        const distance1A = a.distance_1 !== null ? a.distance_1 : Infinity; 
-        const distance1B = b.distance_1 !== null ? b.distance_1 : Infinity;
+    if (optionType.toUpperCase() === 'PRESTASI-RAPOR') {
+        filtered_data.sort((a, b) => {
+            const scoreA = a.score !== null ? a.score : -Infinity;
+            const scoreB = b.score !== null ? b.score : -Infinity;
+            return orderByScore === 'asc' ? scoreA - scoreB : scoreB - scoreA; 
+        });
+    } else {
+        filtered_data.sort((a, b) => {
+            const distance1A = a.distance_1 !== null ? a.distance_1 : Infinity; 
+            const distance1B = b.distance_1 !== null ? b.distance_1 : Infinity;
 
-        if (distance1A !== distance1B) {
-            return distance1A - distance1B; 
-        }
+            if (distance1A !== distance1B) {
+                return distance1A - distance1B; 
+            }
 
-        // Prioritas 2: Jika jarak sama, urutkan berdasarkan Score (descending - tertinggi duluan)
-        const scoreA = a.score !== null ? a.score : -Infinity; 
-        const scoreB = b.score !== null ? b.score : -Infinity;
-        
-        return scoreB - scoreA; 
-    });
+            const scoreA = a.score !== null ? a.score : -Infinity; 
+            const scoreB = b.score !== null ? b.score : -Infinity;
+            
+            return scoreB - scoreA; 
+        });
+    }
 
     const final_ranked_data = filtered_data.map((item, index) => ({
         ...item,
