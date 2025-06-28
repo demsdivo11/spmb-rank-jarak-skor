@@ -431,3 +431,5 @@ app.listen(PORT, () => {
     console.log(`Web Wrapper for SPMB Jabar is ready!`);
     console.log(`Remember to install all dependencies: npm install express axios node-cache ejs`);
 });
+
+// cape semoga last
